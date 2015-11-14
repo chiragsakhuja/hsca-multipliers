@@ -1,4 +1,4 @@
-module half_adder(a, b, s, c);
+module ha(a, b, s, c);
     input  wire a;
     input  wire b;
     output wire s;
@@ -24,8 +24,8 @@ module counter_3_2(in, out);
     wire a_plus_b_c;
     wire a_plus_b_plus_c_c;
 
-    half_adder one(in[0], in[1], a_plus_b_s, a_plus_b_c);
-    half_adder two(in[2], a_plus_b_s, out[0], a_plus_b_plus_c_c);
+    ha one(in[0], in[1], a_plus_b_s, a_plus_b_c);
+    ha two(in[2], a_plus_b_s, out[0], a_plus_b_plus_c_c);
     or(out[1], a_plus_b_plus_c_c, a_plus_b_c);
 
 endmodule

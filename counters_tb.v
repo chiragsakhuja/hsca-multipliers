@@ -25,6 +25,14 @@ module top;
             end
         end
 
+        if(passed == 1'b1) begin
+            #10 $display("Test passed.");
+        end else begin
+            #10 $display("Test failed.");
+        end
+
+        passed = 1'b1;
+
         $display("Testing 7:3");
         for(dut_7_3_in = 7'b0000000; dut_7_3_in != 7'b1111111; dut_7_3_in = dut_7_3_in + 7'b0000001) begin
             #10 test_val = dut_7_3_in[0] + dut_7_3_in[1] + dut_7_3_in[2] + dut_7_3_in[3] + dut_7_3_in[4] + dut_7_3_in[5] + dut_7_3_in[6];
