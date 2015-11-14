@@ -1,0 +1,2 @@
+Verilog (RTL) implementations of 16-bit to 64-bit Dadda multipliers using 3:2
+and 7:3 counters for my final project in High-Speed Computer Arithmetic.
