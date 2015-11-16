@@ -19,9 +19,6 @@ module top;
 
     initial 
     begin
-        $dumpfile("adders.vcd");
-        $dumpvars(0, dut16x16);
-
         passed = 1'b1;
 
         $display("Testing 4x4 CLA");
