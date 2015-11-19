@@ -16,7 +16,7 @@ module ha(a, b, s, c);
 
 endmodule
 
-module counter_3_2(in, out);
+module counter3(in, out);
     input  wire [2:0] in;
     output wire [1:0] out;
 
@@ -30,7 +30,7 @@ module counter_3_2(in, out);
 
 endmodule
 
-module counter_7_3(in, out);
+module counter7(in, out);
     input  wire [6:0] in;
     output wire [2:0] out;
 
@@ -39,10 +39,10 @@ module counter_7_3(in, out);
     wire [1:0] rca1_out;
     wire [1:0] rca2_out;
 
-    counter_3_2 fa1(in[2:0], fa1_out);
-    counter_3_2 fa2(in[5:3], fa2_out);
-    counter_3_2 rca1({in[6], fa1_out[0], fa2_out[0]}, rca1_out);
-    counter_3_2 rca2({rca1_out[1], fa1_out[1], fa2_out[1]}, out[2:1]);
+    counter3 fa1(in[2:0], fa1_out);
+    counter3 fa2(in[5:3], fa2_out);
+    counter3 rca1({in[6], fa1_out[0], fa2_out[0]}, rca1_out);
+    counter3 rca2({rca1_out[1], fa1_out[1], fa2_out[1]}, out[2:1]);
 
     assign out[0] = rca1_out[0];
 

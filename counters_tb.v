@@ -7,8 +7,8 @@ module top;
 
     integer test_val;
 
-    counter_3_2 dut_3_2(dut_3_2_in, dut_3_2_out);
-    counter_7_3 dut_7_3(dut_7_3_in, dut_7_3_out);
+    counter3 dut_3_2(dut_3_2_in, dut_3_2_out);
+    counter7 dut_7_3(dut_7_3_in, dut_7_3_out);
 
     reg passed;
 

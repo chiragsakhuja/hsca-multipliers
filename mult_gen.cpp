@@ -24,11 +24,13 @@ enum OpType
 
 // Check if dot is being used as part of a counter.
 inline bool isCounter(OpType op) { return (op >= OP_COUNTER_2 && op <= OP_COUNTER_7); }
+inline bool isSmallCounter(OpType op) { return (op >= OP_COUNTER_2 && op <= OP_COUNTER_3); }
 
 class Dot
 {
     public:
         OpType op;
+        std::string name;
         int left_index, right_index;
 
         Dot();
@@ -42,6 +44,7 @@ Dot::Dot()
     op = OP_EMPTY;
     left_index = -1;
     right_index = -1;
+    name = "NO NAME";
 }
 
 inline bool isCounter(OpType op);
@@ -57,7 +60,7 @@ void coalesceCounters(Dots *dots, int n, int target_height);
 void createMulitplier(int size, bool big_counters);
 void generateTheVerilogFooter(std::ostream& file);
 void generateTheVerilogHeader(int size, bool big_counters, std::ostream& file);
-void generateTheVerilog(Dots *dots, int size, int stage_num, int target_height, bool big_counters, std::ostream& file);
+void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file);
 
 int main(int argc, char *argv[])
 {
@@ -336,20 +339,24 @@ void createMulitplier(int size, bool big_counters)
     Dots *cur_dots = new Dots[2 * size];
     createDots(cur_dots, size);
 
-    generateTheVerilog(cur_dots, size, 0, size, big_counters, std::cout);
+    generateTheVerilog(cur_dots, size, 0, output);
     std::cout << "\n";
     //printDots(cur_dots, 2 * size);
 
     int cur_height = size;
+    int stage_count = 1;
     while(cur_height > 2) {
         //std::cout << "##########\n";
         cur_height = computeStage(cur_dots, 2 * size, cur_height, big_counters);
+        generateTheVerilog(cur_dots, size, stage_count, output);
         //printDots(cur_dots, size * 2);
         // TODO: Generate Verilog.
         //std::cout << std::endl;
         coalesceCounters(cur_dots, 2 * size, cur_height);
         //printDots(cur_dots, size * 2);
         //std::cout << "##########\n";
+        output << "\n";
+        stage_count++;
     }
 
     generateTheVerilogFooter(output);
@@ -369,20 +376,19 @@ void generateTheVerilogFooter(std::ostream& file)
     file << "endmodule\n";
 }
 
-void generateTheVerilog(Dots *dots, int size, int stage_num, int target_height, bool big_counters, std::ostream& file)
+void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
 {
-    file << "    // BEGIN STAGE " << stage_num << "\n";
+    file << "    // Begin stage " << stage_num << ".\n";
     printDots(dots, 2 * size, file);
     file << "\n";
 
-    std::vector<std::string> cached_names;
-
+    file << "    // Output wires for AND and PROP.\n";
     for(int i = 0; i < 2 * size; i++) {
         for(unsigned int j = 0; j < dots[i].size(); j++) {
-            if(dots[i][j].op != OP_EMPTY) {
+            if(dots[i][j].op == OP_AND || dots[i][j].op == OP_PROP) {
                 std::stringstream wire_name;
                 wire_name << "stage" << stage_num << "_" << i << "_" << j;
-                cached_names.push_back(wire_name.str());
+                dots[i][j].name = wire_name.str();
                 file << "    wire " << wire_name.str() << ";\n";
             }
         }
@@ -390,18 +396,66 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, int target_height, 
 
     file << "\n";
 
-    unsigned int string_id = 0;
     for(int i = 0; i < 2 * size; i++) {
         for(unsigned int j = 0; j < dots[i].size(); j++) {
             if(dots[i][j].op != OP_EMPTY) {
                 if(dots[i][j].op == OP_AND) {
-                    file << "    and(" << cached_names[string_id] << ", a[" << dots[i][j].left_index << "], b[" << dots[i][j].right_index << "]);\n";
-                }
+                    file << "    and(" << dots[i][j].name << ", a[" << dots[i][j].left_index << "], b[" << dots[i][j].right_index << "]);\n";
+                } else if(isCounter(dots[i][j].op)) {
+                    if(dots[i][j].left_index == -1) {
+                        // Determine wire size.
+                        file << "    wire ";
+                        int counter_size;
+                        if(isSmallCounter(dots[i][j].op)) {
+                            file << "[1:0]";
+                            counter_size = 3;
+                        } else {
+                            file << "[2:0]";
+                            counter_size = 7;
+                        }
 
-                string_id++;
+                        // Determine wire name.
+                        std::stringstream wire_name;
+                        wire_name << "counter" << counter_size << "_" << i << "_" << j;
+                        file << " " << wire_name.str() << ";\n";
+                        
+                        // Create counter module.
+                        int num_inputs = 1;
+                        file << "    counter" << counter_size << " c" << stage_num << "_" << i << "_" << j << "({" << dots[i][j].name << ", ";
+
+                        std::stringstream wire_part_name;
+                        std::stringstream next_wire_part_name;
+                        wire_part_name << wire_name.str() << "[0]";
+                        next_wire_part_name << wire_name.str() << "[1]";
+                        dots[i][j].name = wire_part_name.str();
+
+                        int cur_counter = dots[i][j].right_index;
+                        while(j + 1 < dots[i].size() && isCounter(dots[i][j + 1].op) && dots[i][j + 1].right_index == cur_counter) {
+                            j++;
+                            file << dots[i][j].name;
+                            if(j + 1 < dots[i].size() && isCounter(dots[i][j + 1].op) && dots[i][j + 1].right_index == cur_counter) {
+                                file << ", ";
+                            }
+                            num_inputs++;
+                        }
+                        // TODO: fill in empty inputs in concatenation.
+                        for(int k = 0; k < counter_size - num_inputs; k++) {
+                            if(k == 0) { file << ", "; }
+                            file << "1'b0";
+                            if(k + 1 < counter_size - num_inputs) { file << ", "; }
+                        }
+                        file << "}, " << wire_name.str() << ");\n";
+
+                        dots[i + 1][dots[i][j].right_index].name = next_wire_part_name.str();
+                    }
+                } else if(dots[i][j].op == OP_PROP) {
+                    std::stringstream prev_wire_name;
+                    prev_wire_name << "stage" << (stage_num - 1) << "_" << i << "_" << j;
+                    file << "    assign " << dots[i][j].name << " = " << prev_wire_name.str() << ";\n";
+                }
             }
         }
     }
 
-    file << "    // END STAGE " << stage_num << "\n";
+    file << "    // End stage " << stage_num << ".\n";
 }
