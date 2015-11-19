@@ -47,7 +47,7 @@ Dot::Dot()
 inline bool isCounter(OpType op);
 std::ostream& operator<<(std::ostream& os, const Dot& dot);
 int getNextTargetHeight(int height, bool big_counters);
-void printDots(Dots *dots, int n);
+void printDots(Dots *dots, int n, std::ostream& file);
 unsigned int countDots(Dots& dot_row);
 int findLastUncompressed(Dots& dot_row);
 void createDots(Dots *cur_dots, int size);
@@ -55,7 +55,9 @@ void countCounters(int *counter_count, int diff, bool big_counters);
 int computeStage(Dots *dots, int n, int height, bool big_counters);
 void coalesceCounters(Dots *dots, int n, int target_height);
 void createMulitplier(int size, bool big_counters);
-void generateTheVerilog(Dots *dots, int size, bool big_counters, std::ostream& file);
+void generateTheVerilogFooter(std::ostream& file);
+void generateTheVerilogHeader(int size, bool big_counters, std::ostream& file);
+void generateTheVerilog(Dots *dots, int size, int stage_num, int target_height, bool big_counters, std::ostream& file);
 
 int main(int argc, char *argv[])
 {
@@ -131,15 +133,17 @@ int getNextTargetHeight(int height, bool big_counters)
 }
 
 // Prints the dot matrix in a dot diagram fashion (right to left instead of top to bottom, though).
-void printDots(Dots *dots, int n)
+void printDots(Dots *dots, int n, std::ostream& file)
 {
+    file << "    /*\n";
     for(int i = 0; i < n; i++) {
-        std::cout << (i % 10) << ": [";
+        file << "      " <<  (i % 10) << ": [";
         for(unsigned int j = 0; j < dots[i].size(); j++) {
-            std::cout << dots[i][j] << "|";
+            file << dots[i][j] << "|";
         }
-        std::cout << "]\n";
+        file << "]\n";
     }
+    file << "    */\n";
 }
 
 // Given a row, counts how many dots (used or unused) there are.
@@ -326,9 +330,14 @@ void coalesceCounters(Dots *dots, int n, int target_height)
 
 void createMulitplier(int size, bool big_counters)
 {
+    std::ostream& output = std::cout;
+    generateTheVerilogHeader(size, big_counters, output);
+
     Dots *cur_dots = new Dots[2 * size];
     createDots(cur_dots, size);
-    generateTheVerilog(cur_dots, size, big_counters, std::cout);
+
+    generateTheVerilog(cur_dots, size, 0, size, big_counters, std::cout);
+    std::cout << "\n";
     //printDots(cur_dots, 2 * size);
 
     int cur_height = size;
@@ -343,17 +352,56 @@ void createMulitplier(int size, bool big_counters)
         //std::cout << "##########\n";
     }
 
+    generateTheVerilogFooter(output);
+
     delete[] cur_dots;
 }
 
 void generateTheVerilogHeader(int size, bool big_counters, std::ostream& file)
 {
-    file << "module dadda_" << size << "x" << size << "_" << (big_counters ? "7_3" : "3_2") << "(" << "a, b, prod);\n";
+    file << "module dadda_" << size << "x" << size << "_" << (big_counters ? "7_3" : "3_2") << "(" << "a, b, prod);\n\n";
     file << "    input  wire [" << (size - 1) << ":0] a, b;\n";
-    file << "    output wire [" << (2 * size) << ":0] prod;\n";
+    file << "    output wire [" << (2 * size) << ":0] prod;\n\n";
 }
 
-void generateTheVerilog(Dots *dots, int size, bool big_counters, std::ostream& file)
+void generateTheVerilogFooter(std::ostream& file)
 {
-    generateTheVerilogHeader(size, big_counters, file);
+    file << "endmodule\n";
+}
+
+void generateTheVerilog(Dots *dots, int size, int stage_num, int target_height, bool big_counters, std::ostream& file)
+{
+    file << "    // BEGIN STAGE " << stage_num << "\n";
+    printDots(dots, 2 * size, file);
+    file << "\n";
+
+    std::vector<std::string> cached_names;
+
+    for(int i = 0; i < 2 * size; i++) {
+        for(unsigned int j = 0; j < dots[i].size(); j++) {
+            if(dots[i][j].op != OP_EMPTY) {
+                std::stringstream wire_name;
+                wire_name << "stage" << stage_num << "_" << i << "_" << j;
+                cached_names.push_back(wire_name.str());
+                file << "    wire " << wire_name.str() << ";\n";
+            }
+        }
+    }
+
+    file << "\n";
+
+    unsigned int string_id = 0;
+    for(int i = 0; i < 2 * size; i++) {
+        for(unsigned int j = 0; j < dots[i].size(); j++) {
+            if(dots[i][j].op != OP_EMPTY) {
+                if(dots[i][j].op == OP_AND) {
+                    file << "    and(" << cached_names[string_id] << ", a[" << dots[i][j].left_index << "], b[" << dots[i][j].right_index << "]);\n";
+                }
+
+                string_id++;
+            }
+        }
+    }
+
+    file << "    // END STAGE " << stage_num << "\n";
 }
