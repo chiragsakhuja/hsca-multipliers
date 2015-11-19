@@ -6,6 +6,7 @@
 #include <ios>
 #include <iomanip>
 #include <sstream>
+#include <fstream>
 
 // Define all possible dot types.
 enum OpType
@@ -22,10 +23,7 @@ enum OpType
 };
 
 // Check if dot is being used as part of a counter.
-inline bool isCounter(OpType op)
-{
-    return (op >= OP_COUNTER_2 && op <= OP_COUNTER_7);
-}
+inline bool isCounter(OpType op) { return (op >= OP_COUNTER_2 && op <= OP_COUNTER_7); }
 
 class Dot
 {
@@ -44,6 +42,34 @@ Dot::Dot()
     op = OP_EMPTY;
     left_index = -1;
     right_index = -1;
+}
+
+inline bool isCounter(OpType op);
+std::ostream& operator<<(std::ostream& os, const Dot& dot);
+int getNextTargetHeight(int height, bool big_counters);
+void printDots(Dots *dots, int n);
+unsigned int countDots(Dots& dot_row);
+int findLastUncompressed(Dots& dot_row);
+void createDots(Dots *cur_dots, int size);
+void countCounters(int *counter_count, int diff, bool big_counters);
+int computeStage(Dots *dots, int n, int height, bool big_counters);
+void coalesceCounters(Dots *dots, int n, int target_height);
+void createMulitplier(int size, bool big_counters);
+void generateTheVerilog(Dots *dots, int size, bool big_counters, std::ostream& file);
+
+int main(int argc, char *argv[])
+{
+    if(argc != 3) {
+        std::cout << "Usage: " << argv[0] << " size big-counters[0|1]\n";
+        return 1;
+    }
+
+    int size = atoi(argv[1]);
+    bool big_counters = ((atoi(argv[2]) == 0) ? false : true);
+
+    createMulitplier(size, big_counters);
+
+    return 0;
 }
 
 // Print human-readable operation of a dot.
@@ -220,7 +246,7 @@ int computeStage(Dots *dots, int n, int height, bool big_counters)
             int counter_count[8];
             // Compute how many, and which, counters we need.
             countCounters(counter_count, diff, big_counters);
-            
+
             // Replace extraneous dots with counters, starting from the largest counter first.
             for(int j = 7; j >= 2; j--) {
                 // Perform the replace operation for as many counters of size j that we have.
@@ -260,6 +286,8 @@ int computeStage(Dots *dots, int n, int height, bool big_counters)
         for(unsigned int j = 0; j < dots[i].size(); j++) {
             if(dots[i][j].op == OP_AND) {
                 dots[i][j].op = OP_PROP;
+                dots[i][j].left_index = -1;
+                dots[i][j].right_index = -1;
             }
         }
     }
@@ -300,34 +328,32 @@ void createMulitplier(int size, bool big_counters)
 {
     Dots *cur_dots = new Dots[2 * size];
     createDots(cur_dots, size);
-    printDots(cur_dots, 2 * size);
+    generateTheVerilog(cur_dots, size, big_counters, std::cout);
+    //printDots(cur_dots, 2 * size);
 
     int cur_height = size;
     while(cur_height > 2) {
-        std::cout << "##########\n";
+        //std::cout << "##########\n";
         cur_height = computeStage(cur_dots, 2 * size, cur_height, big_counters);
-        printDots(cur_dots, size * 2);
+        //printDots(cur_dots, size * 2);
         // TODO: Generate Verilog.
-        std::cout << std::endl;
+        //std::cout << std::endl;
         coalesceCounters(cur_dots, 2 * size, cur_height);
-        printDots(cur_dots, size * 2);
-        std::cout << "##########\n";
+        //printDots(cur_dots, size * 2);
+        //std::cout << "##########\n";
     }
 
     delete[] cur_dots;
 }
 
-int main(int argc, char *argv[])
+void generateTheVerilogHeader(int size, bool big_counters, std::ostream& file)
 {
-    if(argc != 3) {
-        std::cout << "Usage: " << argv[0] << " size big-counters[0|1]\n";
-        return 1;
-    }
+    file << "module dadda_" << size << "x" << size << "_" << (big_counters ? "7_3" : "3_2") << "(" << "a, b, prod);\n";
+    file << "    input  wire [" << (size - 1) << ":0] a, b;\n";
+    file << "    output wire [" << (2 * size) << ":0] prod;\n";
+}
 
-    int size = atoi(argv[1]);
-    bool big_counters = ((atoi(argv[2]) == 0) ? false : true);
-
-    createMulitplier(size, big_counters);
-
-    return 0;
+void generateTheVerilog(Dots *dots, int size, bool big_counters, std::ostream& file)
+{
+    generateTheVerilogHeader(size, big_counters, file);
 }
