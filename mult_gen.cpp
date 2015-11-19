@@ -232,7 +232,7 @@ void coalesceCounters(Dots *dots, int n, int target_height)
             if(isCounter(dots[i][j].op)) {
                 if(dots[i][j].left_index == -1) {
                     int cur_counter = dots[i][j].right_index;
-                    while(isCounter(dots[i][j + 1].op) && dots[i][j + 1].right_index == cur_counter) {
+                    while(j + 1 < dots[i].size() && isCounter(dots[i][j + 1].op) && dots[i][j + 1].right_index == cur_counter) {
                         dots[i].erase(dots[i].begin() + j + 1);
                     }
                 }
