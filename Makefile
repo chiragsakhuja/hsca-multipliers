@@ -15,7 +15,7 @@ test-adders: adders
 
 mults:
 	g++ -O3 dadda_gen.cpp -o dadda_gen
-	./dadda_gen 32 0 > mult_3_2.v
+	./dadda_gen mult_3_2.conf
 	iverilog -o mult_3_2_tb -Wall mult_3_2.v counters.v mult_3_2_tb.v
 
 test-mults: mults

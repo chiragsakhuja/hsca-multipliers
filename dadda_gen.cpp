@@ -68,17 +68,32 @@ void generateTheVerilogAdder(Dots* dots, int n, std::ostream& file);
 
 int main(int argc, char *argv[])
 {
-    if(argc != 3) {
-        std::cout << "Usage: " << argv[0] << " size big-counters[0|1]\n";
+    if(argc != 2) {
+        std::cout << "Usage: " << argv[0] << " config\n";
+        std::cout << "    Configuration file is structured as follows: \n"
+                  << "      output file\n"
+                  << "      number of configurations\n"
+                  << "      size big_counters[0|1]\n"
+                  << "      ...\n"
+                  << "      size big_counters[0|1]\n";
         return 1;
     }
 
-    int size = atoi(argv[1]);
-    bool big_counters = ((atoi(argv[2]) == 0) ? false : true);
+    std::ifstream config_file(argv[1]);
 
-    std::ostream& output = std::cout;
+    std::string out_file_name;
+    config_file >> out_file_name;
+    std::ofstream out_file(out_file_name);
 
-    createMulitplier(size, big_counters, output);
+    int config_count;
+    config_file >> config_count;
+    for(int i = 0; i < config_count; i++) {
+        int size, big_counters_i;
+        config_file >> size >> big_counters_i;
+        bool big_counters = ((big_counters_i == 0) ? false : true);
+        createMulitplier(size, big_counters, out_file);
+        out_file << "\n\n";
+    }
 
     return 0;
 }
