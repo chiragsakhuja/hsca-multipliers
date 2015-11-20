@@ -15,7 +15,8 @@ test-adders: adders
 
 mults:
 	g++ -g -Wall mult_gen.cpp -o mult_gen
-	# iverilog -o mult_3_2_tb -Wall mult_3_2.v counters.v mult_3_2_tb.v
+	./mult_gen 4 0 > mult_3_2.v
+	iverilog -o mult_3_2_tb -Wall mult_3_2.v counters.v mult_3_2_tb.v
 
 clean:
 	rm counters_tb adders_tb mult_3_2_tb

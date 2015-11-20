@@ -363,9 +363,9 @@ void createMulitplier(int size, bool big_counters, std::ostream& output)
 
 void generateTheVerilogHeader(int size, bool big_counters, std::ostream& file)
 {
-    file << "module dadda_" << size << "x" << size << "_" << (big_counters ? "7_3" : "3_2") << "(" << "a, b, prod);\n\n";
+    file << "module dadda" << size << "x" << size << "_" << (big_counters ? "7_3" : "3_2") << "(" << "a, b, prod);\n\n";
     file << "    input  wire [" << (size - 1) << ":0] a, b;\n";
-    file << "    output wire [" << (2 * size) << ":0] prod;\n\n";
+    file << "    output wire [" << (2 * size - 1) << ":0] prod;\n\n";
 }
 
 void generateTheVerilogFooter(std::ostream& file)
@@ -487,7 +487,7 @@ void generateTheVerilogAdder(Dots* dots, int n, std::ostream& file)
             file << ", ";
         }
     }
-    file << "} + \n                         ";
+    file << "} + \n                         {";
 
     for(int i = n - 1; i >= adder_lsb; i--) {
         if(dots[i][1].op == OP_EMPTY) {
