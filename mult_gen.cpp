@@ -57,10 +57,11 @@ void createDots(Dots *cur_dots, int size);
 void countCounters(int *counter_count, int diff, bool big_counters);
 int computeStage(Dots *dots, int n, int height, bool big_counters);
 void coalesceCounters(Dots *dots, int n, int target_height);
-void createMulitplier(int size, bool big_counters);
+void createMulitplier(int size, bool big_counters, std::ostream& output);
 void generateTheVerilogFooter(std::ostream& file);
 void generateTheVerilogHeader(int size, bool big_counters, std::ostream& file);
 void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file);
+void generateTheVerilogAdder(Dots* dots, int n, std::ostream& file);
 
 int main(int argc, char *argv[])
 {
@@ -72,7 +73,9 @@ int main(int argc, char *argv[])
     int size = atoi(argv[1]);
     bool big_counters = ((atoi(argv[2]) == 0) ? false : true);
 
-    createMulitplier(size, big_counters);
+    std::ostream& output = std::cout;
+
+    createMulitplier(size, big_counters, output);
 
     return 0;
 }
@@ -331,34 +334,28 @@ void coalesceCounters(Dots *dots, int n, int target_height)
     }
 }
 
-void createMulitplier(int size, bool big_counters)
+void createMulitplier(int size, bool big_counters, std::ostream& output)
 {
-    std::ostream& output = std::cout;
     generateTheVerilogHeader(size, big_counters, output);
 
     Dots *cur_dots = new Dots[2 * size];
     createDots(cur_dots, size);
 
     generateTheVerilog(cur_dots, size, 0, output);
-    std::cout << "\n";
-    //printDots(cur_dots, 2 * size);
+    output << "\n";
 
     int cur_height = size;
     int stage_count = 1;
     while(cur_height > 2) {
-        //std::cout << "##########\n";
         cur_height = computeStage(cur_dots, 2 * size, cur_height, big_counters);
         generateTheVerilog(cur_dots, size, stage_count, output);
-        //printDots(cur_dots, size * 2);
-        // TODO: Generate Verilog.
-        //std::cout << std::endl;
         coalesceCounters(cur_dots, 2 * size, cur_height);
-        //printDots(cur_dots, size * 2);
-        //std::cout << "##########\n";
         output << "\n";
         stage_count++;
     }
 
+    generateTheVerilogAdder(cur_dots, 2 * size, output);
+    output << "\n";
     generateTheVerilogFooter(output);
 
     delete[] cur_dots;
@@ -418,7 +415,7 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                         std::stringstream wire_name;
                         wire_name << "counter" << counter_size << "_" << i << "_" << j;
                         file << " " << wire_name.str() << ";\n";
-                        
+
                         // Create counter module.
                         int num_inputs = 1;
                         file << "    counter" << counter_size << " c" << stage_num << "_" << i << "_" << j << "({" << dots[i][j].name << ", ";
@@ -438,7 +435,6 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                             }
                             num_inputs++;
                         }
-                        // TODO: fill in empty inputs in concatenation.
                         for(int k = 0; k < counter_size - num_inputs; k++) {
                             if(k == 0) { file << ", "; }
                             file << "1'b0";
@@ -458,4 +454,50 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
     }
 
     file << "    // End stage " << stage_num << ".\n";
+}
+
+void generateTheVerilogAdder(Dots* dots, int n, std::ostream& file)
+{
+    int adder_lsb = 0;
+    while(dots[adder_lsb][1].op != OP_PROP) {
+        adder_lsb++;
+    }
+
+    if(adder_lsb == 1) {
+        file << "    assign prod[0] = " << dots[0][0].name << ";\n";
+    } else {
+        file << "    assign prod[" << (adder_lsb - 1) << ":0] = {";
+        for(int i = 0; i < adder_lsb; i++) {
+            file << dots[i][0].name;
+            if(i + 1 < adder_lsb) {
+                file << ", ";
+            }
+        }
+        file << "};\n";
+    }
+
+    file << "    assign prod[" << (n - 1) << ":" << adder_lsb << "] = {";
+    for(int i = n - 1; i >= adder_lsb; i--) {
+        if(dots[i][0].op == OP_EMPTY) {
+            file << "1\'b0";
+        } else {
+            file << dots[i][0].name;
+        }
+        if(i - 1 >= adder_lsb) {
+            file << ", ";
+        }
+    }
+    file << "} + \n                         ";
+
+    for(int i = n - 1; i >= adder_lsb; i--) {
+        if(dots[i][1].op == OP_EMPTY) {
+            file << "1\'b0";
+        } else {
+            file << dots[i][1].name;
+        }
+        if(i - 1 >= adder_lsb) {
+            file << ", ";
+        }
+    }
+    file << "};\n";
 }
