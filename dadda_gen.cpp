@@ -31,9 +31,11 @@ class Dot
     public:
         OpType op;
         std::string name;
+        std::string prev_name;
         int left_index, right_index;
 
         Dot();
+        void assignName(std::string new_name);
 };
 
 typedef std::vector<Dot> Dots;
@@ -45,6 +47,7 @@ Dot::Dot()
     left_index = -1;
     right_index = -1;
     name = "NO NAME";
+    prev_name = "NO NAME";
 }
 
 inline bool isCounter(OpType op);
@@ -114,7 +117,7 @@ std::ostream& operator<<(std::ostream& os, const Dot& dot)
 
     // Print with padding for easy viewing.
     std::ios::fmtflags orig_flags(os.flags());
-    os << std::setw(7) << output.str();
+    os << std::setw(9) << output.str();
     os.flags(orig_flags);
 
     return os;
@@ -385,7 +388,7 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
             if(dots[i][j].op == OP_AND || dots[i][j].op == OP_PROP) {
                 std::stringstream wire_name;
                 wire_name << "stage" << stage_num << "_" << i << "_" << j;
-                dots[i][j].name = wire_name.str();
+                dots[i][j].assignName(wire_name.str());
                 file << "    wire " << wire_name.str() << ";\n";
             }
         }
@@ -413,7 +416,7 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
 
                         // Determine wire name.
                         std::stringstream wire_name;
-                        wire_name << "counter" << counter_size << "_" << i << "_" << j;
+                        wire_name << "counter" << stage_num << "_" << i << "_" << j;
                         file << " " << wire_name.str() << ";\n";
 
                         // Create counter module.
@@ -424,7 +427,7 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                         std::stringstream next_wire_part_name;
                         wire_part_name << wire_name.str() << "[0]";
                         next_wire_part_name << wire_name.str() << "[1]";
-                        dots[i][j].name = wire_part_name.str();
+                        dots[i][j].assignName(wire_part_name.str());
 
                         int cur_counter = dots[i][j].right_index;
                         while(j + 1 < dots[i].size() && isCounter(dots[i][j + 1].op) && dots[i][j + 1].right_index == cur_counter) {
@@ -442,12 +445,10 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                         }
                         file << "}, " << wire_name.str() << ");\n";
 
-                        dots[i + 1][dots[i][j].right_index].name = next_wire_part_name.str();
+                        dots[i + 1][dots[i][j].right_index].assignName(next_wire_part_name.str());
                     }
                 } else if(dots[i][j].op == OP_PROP) {
-                    std::stringstream prev_wire_name;
-                    prev_wire_name << "stage" << (stage_num - 1) << "_" << i << "_" << j;
-                    file << "    assign " << dots[i][j].name << " = " << prev_wire_name.str() << ";\n";
+                    file << "    assign " << dots[i][j].name << " = " << dots[i][j].prev_name << ";\n";
                 }
             }
         }
@@ -500,4 +501,10 @@ void generateTheVerilogAdder(Dots* dots, int n, std::ostream& file)
         }
     }
     file << "};\n";
+}
+
+void Dot::assignName(std::string new_name)
+{
+    prev_name = name;
+    name = new_name;
 }

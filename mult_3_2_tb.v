@@ -6,7 +6,7 @@ module top;
 
     integer test_val;
 
-    dadda4x4_3_2 dut4x4(dut4x4_a, dut4x4_b, dut4x4_out);
+    dadda32x32_3_2 dut4x4(dut4x4_a, dut4x4_b, dut4x4_out);
 
     reg passed;
     integer i, j;
@@ -24,8 +24,6 @@ module top;
                 if(dut4x4_out != test_val[7:0]) begin
                     $display("Error: %d * %d != %d (expected %d)", dut4x4_a, dut4x4_b, dut4x4_out, test_val[7:0]);
                     passed = 1'b0;
-                end else begin
-                    $display("%d * %d = %d", dut4x4_a, dut4x4_b, dut4x4_out);
                 end
             end
         end
