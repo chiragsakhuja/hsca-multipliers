@@ -182,7 +182,13 @@ int getNextTargetHeight(int height, bool big_counters, bool super_big_counters)
                 return 2;
             }
         } else {
-            return -1;
+            if(height > 7) {
+                return 7;
+            } else if(height > 3) {
+                return 3;
+            } else if(height > 2) {
+                return 2;
+            }
         }
     }
     return -1;
@@ -553,7 +559,8 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                         if(! isSmallCounter(dots[i][j].op)) {
                             dots[i + 2][dots[i + 1][dots[i][j].right_index].right_index].assignName(next_next_wire_part_name.str());
                             if(isSuperBigCounter(dots[i][j].op)) {
-                                dots[i + 3][dots[i + 1][dots[i + 1][dots[i][j].right_index].right_index].right_index].assignName(next_next_next_wire_part_name.str());
+                                std::cout << stage_num << "\n";
+                                dots[i + 3][dots[i + 2][dots[i + 1][dots[i][j].right_index].right_index].right_index].assignName(next_next_next_wire_part_name.str());
                             }
                         }
                     }

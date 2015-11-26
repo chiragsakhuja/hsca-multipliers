@@ -1,10 +1,12 @@
 *.swp
 *.vcd
 *.dSYM
+mult_3_2.v
+mult_7_3.v
+mult_15_4.v
 counters_tb
 adders_tb
 mult_3_2_tb
 mult_7_3_tb
+mult_15_4_tb
 dadda_gen
-mult_3_2.v
-mult_7_3.v
