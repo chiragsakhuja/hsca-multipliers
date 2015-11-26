@@ -150,9 +150,10 @@ std::ostream& operator<<(std::ostream& os, const Dot& dot)
     }
 
     // Print with padding for easy viewing.
-    std::ios::fmtflags orig_flags(os.flags());
-    os << std::setw(12) << output.str();
-    os.flags(orig_flags);
+    //std::ios::fmtflags orig_flags(os.flags());
+    os << output.str();
+    //os << std::setw(12) << output.str();
+    //os.flags(orig_flags);
 
     return os;
 }
@@ -182,7 +183,11 @@ int getNextTargetHeight(int height, bool big_counters, bool super_big_counters)
                 return 2;
             }
         } else {
-            if(height > 7) {
+            if(height > 85) {
+                return 85;
+            } else if(height > 22) {
+                return 22;
+            } else if(height > 7) {
                 return 7;
             } else if(height > 3) {
                 return 3;
@@ -361,7 +366,7 @@ int computeStage(Dots *dots, int n, int height, bool big_counters, bool super_bi
                             next_next_next_dot.right_index = -1;
 
                             // If we have space before dots[i + 3].size(), it means there is at least one Z. We can replace the Z.
-                            if((unsigned int) next_next_next_row_avail == dots[i + 2].size()) {
+                            if((unsigned int) next_next_next_row_avail == dots[i + 3].size()) {
                                 dots[i + 3].insert(dots[i + 3].begin() + next_next_next_row_avail, next_next_next_dot);
                             } else {
                                 dots[i + 3][next_next_next_row_avail] = next_next_next_dot;
@@ -558,8 +563,7 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                         dots[i + 1][dots[i][j].right_index].assignName(next_wire_part_name.str());
                         if(! isSmallCounter(dots[i][j].op)) {
                             dots[i + 2][dots[i + 1][dots[i][j].right_index].right_index].assignName(next_next_wire_part_name.str());
-                            if(isSuperBigCounter(dots[i][j].op)) {
-                                std::cout << stage_num << "\n";
+                            if(! isBigCounter(dots[i][j].op)) {
                                 dots[i + 3][dots[i + 2][dots[i + 1][dots[i][j].right_index].right_index].right_index].assignName(next_next_next_wire_part_name.str());
                             }
                         }
