@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
     std::string out_file_name;
     config_file >> out_file_name;
-    std::ofstream out_file(out_file_name);
+    std::ofstream out_file(out_file_name.c_str());
 
     int config_count;
     config_file >> config_count;
