@@ -19,12 +19,22 @@ enum OpType
     , OP_COUNTER_5
     , OP_COUNTER_6
     , OP_COUNTER_7
+    , OP_COUNTER_8
+    , OP_COUNTER_9
+    , OP_COUNTER_10
+    , OP_COUNTER_11
+    , OP_COUNTER_12
+    , OP_COUNTER_13
+    , OP_COUNTER_14
+    , OP_COUNTER_15
     , OP_PROP
 };
 
 // Check if dot is being used as part of a counter.
-inline bool isCounter(OpType op) { return (op >= OP_COUNTER_2 && op <= OP_COUNTER_7); }
+inline bool isCounter(OpType op) { return (op >= OP_COUNTER_2 && op <= OP_COUNTER_15); }
 inline bool isSmallCounter(OpType op) { return (op >= OP_COUNTER_2 && op <= OP_COUNTER_3); }
+inline bool isBigCounter(OpType op) { return (op > OP_COUNTER_3 && op <= OP_COUNTER_7); }
+inline bool isSuperBigCounter(OpType op) { return (op > OP_COUNTER_7 && op <= OP_COUNTER_15); }
 
 class Dot
 {
@@ -52,17 +62,17 @@ Dot::Dot()
 
 inline bool isCounter(OpType op);
 std::ostream& operator<<(std::ostream& os, const Dot& dot);
-int getNextTargetHeight(int height, bool big_counters);
+int getNextTargetHeight(int height, bool big_counters, bool super_big_counters);
 void printDots(Dots *dots, int n, std::ostream& file);
 unsigned int countDots(Dots& dot_row);
 int findLastUncompressed(Dots& dot_row);
 void createDots(Dots *cur_dots, int size);
-void countCounters(int *counter_count, int diff, bool big_counters);
-int computeStage(Dots *dots, int n, int height, bool big_counters);
+void countCounters(int *counter_count, int diff, bool big_counters, bool super_big_counters);
+int computeStage(Dots *dots, int n, int height, bool big_counters, bool super_big_counters);
 void coalesceCounters(Dots *dots, int n, int target_height);
-void createMulitplier(int size, bool big_counters, std::ostream& output);
+void createMulitplier(int size, bool big_counters, bool super_big_counters, std::ostream& output);
 void generateTheVerilogFooter(std::ostream& file);
-void generateTheVerilogHeader(int size, bool big_counters, std::ostream& file);
+void generateTheVerilogHeader(int size, bool big_counters, bool super_big_counters, std::ostream& file);
 void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file);
 void generateTheVerilogAdder(Dots* dots, int n, std::ostream& file);
 
@@ -73,9 +83,9 @@ int main(int argc, char *argv[])
         std::cout << "    Configuration file is structured as follows: \n"
                   << "      output file\n"
                   << "      number of configurations\n"
-                  << "      size big_counters[0|1]\n"
+                  << "      size big_counters[0|1] super_big_counters[0|1]\n"
                   << "      ...\n"
-                  << "      size big_counters[0|1]\n";
+                  << "      size big_counters[0|1] super_big_counters[0|1]\n";
         return 1;
     }
 
@@ -88,10 +98,11 @@ int main(int argc, char *argv[])
     int config_count;
     config_file >> config_count;
     for(int i = 0; i < config_count; i++) {
-        int size, big_counters_i;
-        config_file >> size >> big_counters_i;
+        int size, big_counters_i, super_big_counters_i;
+        config_file >> size >> big_counters_i >> super_big_counters_i;
         bool big_counters = ((big_counters_i == 0) ? false : true);
-        createMulitplier(size, big_counters, out_file);
+        bool super_big_counters = ((super_big_counters_i == 0) ? false : true);
+        createMulitplier(size, big_counters, super_big_counters, out_file);
         out_file << "\n\n";
     }
 
@@ -114,17 +125,25 @@ std::ostream& operator<<(std::ostream& os, const Dot& dot)
         case OP_EMPTY: output << "Z"; break;
         case OP_AND: output << dot.left_index << " AND " << dot.right_index; break;
         case OP_PROP: output << "PROP"; break;
-        case OP_COUNTER_2: output << "2:2"; break;
-        case OP_COUNTER_3: output << "3:2"; break;
-        case OP_COUNTER_4: output << "4:3"; break;
-        case OP_COUNTER_5: output << "5:3"; break;
-        case OP_COUNTER_6: output << "6:3"; break;
-        case OP_COUNTER_7: output << "7:3"; break;
+        case OP_COUNTER_2: output  << "2:2";  break;
+        case OP_COUNTER_3: output  << "3:2";  break;
+        case OP_COUNTER_4: output  << "4:3";  break;
+        case OP_COUNTER_5: output  << "5:3";  break;
+        case OP_COUNTER_6: output  << "6:3";  break;
+        case OP_COUNTER_7: output  << "7:4";  break;
+        case OP_COUNTER_8: output  << "8:4";  break;
+        case OP_COUNTER_9: output  << "9:4";  break;
+        case OP_COUNTER_10: output << "10:4"; break;
+        case OP_COUNTER_11: output << "11:4"; break;
+        case OP_COUNTER_12: output << "12:4"; break;
+        case OP_COUNTER_13: output << "13:4"; break;
+        case OP_COUNTER_14: output << "14:4"; break;
+        case OP_COUNTER_15: output << "15:4"; break;
         default: break;
     }
 
     // If it is a counter, it keeps track of where the output (stored in right_index) goes.
-    if(dot.op >= OP_COUNTER_2 && dot.op <= OP_COUNTER_7) {
+    if(isCounter(dot.op)) {
         if(dot.right_index != -1) {
             output << " " << dot.right_index;
         }
@@ -132,37 +151,38 @@ std::ostream& operator<<(std::ostream& os, const Dot& dot)
 
     // Print with padding for easy viewing.
     std::ios::fmtflags orig_flags(os.flags());
-    os << std::setw(9) << output.str();
+    os << std::setw(12) << output.str();
     os.flags(orig_flags);
 
     return os;
 }
 
 // Given a height, computes what the Dadda height limit should be for the next iteration.
-int getNextTargetHeight(int height, bool big_counters)
+int getNextTargetHeight(int height, bool big_counters, bool super_big_counters)
 {
+    if(height <= 2) {
+        return 1;
+    }
+
     if(! big_counters) {
-        if(height <= 2) {
-            return 1;
-        }
-
-        // With 3:2 counters, the limit can be computed by starting at 2 and multiplying/truncating by 1.5 until we reach the current height.
-        int cur_level = 2;
-        while(((int) (cur_level * 1.5)) < height) {
-            cur_level = (int) (cur_level * 1.5);
-        }
-        return cur_level;
+        return (int)(ceil(height * 2.0 / 3.0));
     } else {
-        if(height <= 2) {
-            return 1;
-        }
-
-        if(height > 7) {
-            return 7;
-        } else if(height > 3) {
-            return 3;
-        } else if(height > 2) {
-            return 2;
+        if(! super_big_counters) {
+            if(height > 80) {
+                return 80;
+            } else if(height > 35) {
+                return 35;
+            } else if(height > 15) {
+                return 15;
+            } else if(height > 7) {
+                return 7;
+            } else if(height > 3) {
+                return 3;
+            } else if(height > 2) {
+                return 2;
+            }
+        } else {
+            return -1;
         }
     }
     return -1;
@@ -239,17 +259,21 @@ void createDots(Dots *cur_dots, int size)
     }
 }
 
-void countCounters(int *counter_count, int diff, bool big_counters)
+void countCounters(int *counter_count, int diff, bool big_counters, bool super_big_counters)
 {
     int start;
     if(big_counters) {
-        start = 7;
+        if(super_big_counters) {
+            start = 15;
+        } else {
+            start = 7;
+        }
     } else {
         start = 3;
     }
 
     // Greedy algorithm to pick the largest counters we can to reach our height limit.
-    for(int i = 7; i >= 2; i--) {
+    for(int i = 15; i >= 2; i--) {
         if(i > start) {
             // If we do not want to use big counters, just skip over them.
             counter_count[i] = 0;
@@ -270,10 +294,10 @@ void countCounters(int *counter_count, int diff, bool big_counters)
 // Adds counters to each row to ensure the height limit will be reached.
 // This marks the dots with enough information to generate the Verilog, but
 // it does not prepared for computing the next stage.
-int computeStage(Dots *dots, int n, int height, bool big_counters)
+int computeStage(Dots *dots, int n, int height, bool big_counters, bool super_big_counters)
 {
     // Compute target height.
-    int target_height = getNextTargetHeight(height, big_counters);
+    int target_height = getNextTargetHeight(height, big_counters, super_big_counters);
 
     // Iterate through each row, adding counters as needed.
     for(int i = 0; i < n - 1; i++) {
@@ -283,16 +307,15 @@ int computeStage(Dots *dots, int n, int height, bool big_counters)
         if(num_dots > target_height) {
             // If the number of dots exceeds our target height, we need to add some counters.
             int diff = num_dots - target_height;
-            int counter_count[8];
+            int counter_count[16];
             // Compute how many, and which, counters we need.
-            countCounters(counter_count, diff, big_counters);
+            countCounters(counter_count, diff, big_counters, super_big_counters);
 
             // Replace extraneous dots with counters, starting from the largest counter first.
-            for(int j = 7; j >= 2; j--) {
+            for(int j = 15; j >= 2; j--) {
                 // Perform the replace operation for as many counters of size j that we have.
                 for(int k = 0; k < counter_count[j]; k++) {
                     // Find the location in the next row where we can add the output of the counter.
-                    // TODO: Enable operation for 7:3 counters as well.
                     int next_row_avail = countDots(dots[i + 1]);
                     int repl;
 
@@ -322,7 +345,24 @@ int computeStage(Dots *dots, int n, int height, bool big_counters)
                         next_next_dot.left_index = next_row_avail;
                         next_next_dot.right_index = -1;
 
-                        // If we have space before dots[i + 1].size(), it means there is at least one Z. We can replace the Z.
+                        if(j > 7) {
+                            int next_next_next_row_avail = countDots(dots[i + 3]);
+                            next_next_dot.right_index = next_next_next_row_avail;
+
+                            Dot next_next_next_dot;
+                            next_next_next_dot.op = (OpType) j;
+                            next_next_next_dot.left_index = next_next_row_avail;
+                            next_next_next_dot.right_index = -1;
+
+                            // If we have space before dots[i + 3].size(), it means there is at least one Z. We can replace the Z.
+                            if((unsigned int) next_next_next_row_avail == dots[i + 2].size()) {
+                                dots[i + 3].insert(dots[i + 3].begin() + next_next_next_row_avail, next_next_next_dot);
+                            } else {
+                                dots[i + 3][next_next_next_row_avail] = next_next_next_dot;
+                            }
+                        }
+
+                        // If we have space before dots[i + 2].size(), it means there is at least one Z. We can replace the Z.
                         if((unsigned int) next_next_row_avail == dots[i + 2].size()) {
                             dots[i + 2].insert(dots[i + 2].begin() + next_next_row_avail, next_next_dot);
                         } else {
@@ -382,9 +422,9 @@ void coalesceCounters(Dots *dots, int n, int target_height)
     }
 }
 
-void createMulitplier(int size, bool big_counters, std::ostream& output)
+void createMulitplier(int size, bool big_counters, bool super_big_counters, std::ostream& output)
 {
-    generateTheVerilogHeader(size, big_counters, output);
+    generateTheVerilogHeader(size, big_counters, super_big_counters, output);
 
     Dots *cur_dots = new Dots[2 * size];
     createDots(cur_dots, size);
@@ -395,7 +435,7 @@ void createMulitplier(int size, bool big_counters, std::ostream& output)
     int cur_height = size;
     int stage_count = 1;
     while(cur_height > 2) {
-        cur_height = computeStage(cur_dots, 2 * size, cur_height, big_counters);
+        cur_height = computeStage(cur_dots, 2 * size, cur_height, big_counters, super_big_counters);
         generateTheVerilog(cur_dots, size, stage_count, output);
         coalesceCounters(cur_dots, 2 * size, cur_height);
         output << "\n";
@@ -409,9 +449,19 @@ void createMulitplier(int size, bool big_counters, std::ostream& output)
     delete[] cur_dots;
 }
 
-void generateTheVerilogHeader(int size, bool big_counters, std::ostream& file)
+void generateTheVerilogHeader(int size, bool big_counters, bool super_big_counters, std::ostream& file)
 {
-    file << "module dadda" << size << "x" << size << "_" << (big_counters ? "7_3" : "3_2") << "(" << "a, b, prod);\n\n";
+    std::string counter_label = "3_2";
+
+    if(big_counters) {
+        counter_label = "7_3";
+        if(super_big_counters) {
+            counter_label = "15_4";
+        }
+    }
+
+
+    file << "module dadda" << size << "x" << size << "_" << counter_label << "(" << "a, b, prod);\n\n";
     file << "    input  wire [" << (size - 1) << ":0] a, b;\n";
     file << "    output wire [" << (2 * size - 1) << ":0] prod;\n\n";
 }
@@ -455,8 +505,13 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                             file << "[1:0]";
                             counter_size = 3;
                         } else {
-                            file << "[2:0]";
-                            counter_size = 7;
+                            if(isBigCounter(dots[i][j].op)) {
+                                file << "[2:0]";
+                                counter_size = 7;
+                            } else {
+                                file << "[3:0]";
+                                counter_size = 15;
+                            }
                         }
 
                         // Determine wire name.
@@ -471,9 +526,11 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                         std::stringstream wire_part_name;
                         std::stringstream next_wire_part_name;
                         std::stringstream next_next_wire_part_name;
+                        std::stringstream next_next_next_wire_part_name;
                         wire_part_name << wire_name.str() << "[0]";
                         next_wire_part_name << wire_name.str() << "[1]";
                         next_next_wire_part_name << wire_name.str() << "[2]";
+                        next_next_next_wire_part_name << wire_name.str() << "[3]";
                         dots[i][j].assignName(wire_part_name.str());
 
                         int cur_counter = dots[i][j].right_index;
@@ -495,6 +552,9 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                         dots[i + 1][dots[i][j].right_index].assignName(next_wire_part_name.str());
                         if(! isSmallCounter(dots[i][j].op)) {
                             dots[i + 2][dots[i + 1][dots[i][j].right_index].right_index].assignName(next_next_wire_part_name.str());
+                            if(isSuperBigCounter(dots[i][j].op)) {
+                                dots[i + 3][dots[i + 1][dots[i + 1][dots[i][j].right_index].right_index].right_index].assignName(next_next_next_wire_part_name.str());
+                            }
                         }
                     }
                 } else if(dots[i][j].op == OP_PROP) {

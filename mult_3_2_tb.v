@@ -26,11 +26,11 @@ module top;
     reg passed;
     integer i;
 
-    initial 
+    initial
     begin
         passed = 1'b1;
 
-        $display("Testing 8x8 Mult");
+        $display("Testing 8x8 mult with 3:2 counters");
 
         for(i = 0; i < 10000; i = i + 1) begin
             mult8x8_a = $urandom_range(8'hff, 8'h00);
@@ -48,7 +48,7 @@ module top;
             #10 $display("Test failed.");
         end
 
-        $display("Testing 16x16 Mult");
+        $display("Testing 16x16 mult with 3:2 counters");
 
         for(i = 0; i < 10000; i = i + 1) begin
             mult16x16_a = $urandom_range(16'hffff, 16'h0000);
