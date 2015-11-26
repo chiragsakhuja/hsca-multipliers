@@ -17,7 +17,7 @@ module top;
     reg passed;
     integer i, j;
 
-    initial 
+    initial
     begin
         passed = 1'b1;
 

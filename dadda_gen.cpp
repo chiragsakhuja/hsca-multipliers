@@ -152,6 +152,18 @@ int getNextTargetHeight(int height, bool big_counters)
             cur_level = (int) (cur_level * 1.5);
         }
         return cur_level;
+    } else {
+        if(height <= 2) {
+            return 1;
+        }
+
+        if(height > 7) {
+            return 7;
+        } else if(height > 3) {
+            return 3;
+        } else if(height > 2) {
+            return 2;
+        }
     }
     return -1;
 }
@@ -300,6 +312,24 @@ int computeStage(Dots *dots, int n, int height, bool big_counters)
                     next_dot.op = (OpType) j;
                     next_dot.left_index = repl;
                     next_dot.right_index = -1;
+
+                    if(j > 3) {
+                        int next_next_row_avail = countDots(dots[i + 2]);
+                        next_dot.right_index = next_next_row_avail;
+
+                        Dot next_next_dot;
+                        next_next_dot.op = (OpType) j;
+                        next_next_dot.left_index = next_row_avail;
+                        next_next_dot.right_index = -1;
+
+                        // If we have space before dots[i + 1].size(), it means there is at least one Z. We can replace the Z.
+                        if((unsigned int) next_next_row_avail == dots[i + 2].size()) {
+                            dots[i + 2].insert(dots[i + 2].begin() + next_next_row_avail, next_next_dot);
+                        } else {
+                            dots[i + 2][next_next_row_avail] = next_next_dot;
+                        }
+                    }
+
                     // If we have space before dots[i + 1].size(), it means there is at least one Z. We can replace the Z.
                     if((unsigned int) next_row_avail == dots[i + 1].size()) {
                         dots[i + 1].insert(dots[i + 1].begin() + next_row_avail, next_dot);
@@ -440,8 +470,10 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
 
                         std::stringstream wire_part_name;
                         std::stringstream next_wire_part_name;
+                        std::stringstream next_next_wire_part_name;
                         wire_part_name << wire_name.str() << "[0]";
                         next_wire_part_name << wire_name.str() << "[1]";
+                        next_next_wire_part_name << wire_name.str() << "[2]";
                         dots[i][j].assignName(wire_part_name.str());
 
                         int cur_counter = dots[i][j].right_index;
@@ -461,6 +493,9 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
                         file << "}, " << wire_name.str() << ");\n";
 
                         dots[i + 1][dots[i][j].right_index].assignName(next_wire_part_name.str());
+                        if(! isSmallCounter(dots[i][j].op)) {
+                            dots[i + 2][dots[i + 1][dots[i][j].right_index].right_index].assignName(next_next_wire_part_name.str());
+                        }
                     }
                 } else if(dots[i][j].op == OP_PROP) {
                     file << "    assign " << dots[i][j].name << " = " << dots[i][j].prev_name << ";\n";
