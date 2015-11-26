@@ -4,5 +4,7 @@
 counters_tb
 adders_tb
 mult_3_2_tb
+mult_7_3_tb
 dadda_gen
 mult_3_2.v
+mult_7_3.v
