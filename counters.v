@@ -8,10 +8,10 @@ module ha(a, b, s, c);
     wire a_and_b;
     wire a_and_b_n;
 
-    or(a_or_b, a, b);
-    and(a_and_b, a, b);
-    not(a_and_b_n, a_and_b);
-    and(s, a_or_b, a_and_b_n);
+    OR2X4 gate0(a, b, a_or_b);
+    AND2X4 gate1(a, b, a_and_b);
+    INVX4 gate2(a_and_b, a_and_b_n);
+    AND2X4 gate3(a_or_b, a_and_b_n, s);
     assign c = a_and_b;
 
 endmodule
@@ -26,7 +26,7 @@ module counter3(in, out);
 
     ha one(in[0], in[1], a_plus_b_s, a_plus_b_c);
     ha two(in[2], a_plus_b_s, out[0], a_plus_b_plus_c_c);
-    or(out[1], a_plus_b_plus_c_c, a_plus_b_c);
+    OR2X4 gate0(a_plus_b_c, out[1], a_plus_b_plus_c_c);
 
 endmodule
 
