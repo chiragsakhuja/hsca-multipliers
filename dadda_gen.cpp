@@ -508,7 +508,7 @@ void generateTheVerilog(Dots *dots, int size, int stage_num, std::ostream& file)
         for(unsigned int j = 0; j < dots[i].size(); j++) {
             if(dots[i][j].op != OP_EMPTY) {
                 if(dots[i][j].op == OP_AND) {
-                    file << "    AND2X4 gate" << (and_id++) << "(" << "a[" << dots[i][j].left_index << "], b[" << dots[i][j].right_index << "], " << dots[i][j].name << ");\n";
+                    file << "    and gate" << (and_id++) << "(" << "a[" << dots[i][j].left_index << "], b[" << dots[i][j].right_index << "], " << dots[i][j].name << ");\n";
                 } else if(isCounter(dots[i][j].op)) {
                     if(dots[i][j].left_index == -1) {
                         // Determine wire size.
